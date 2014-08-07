@@ -20,7 +20,7 @@ sent to a log that can be reviewed.
 int main(int argc, char *argv[])
 {
     char *currObj, *parVal, *filename;
-    int i, isParam;
+    int i, n, a, isParam;
     
     printf("\nDAMSON Parser");
     printf("Version: %i.%i.%i (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_DATE);
@@ -32,7 +32,27 @@ int main(int argc, char *argv[])
         currObj = argv[i];
         isParam = 0;
         a = strlen(argv[i]);
-        
+        for (n = 0; n < a; n++)
+            if (argv[i][n] == '-')
+                isParam = 1;
+            else
+                break;
+        if (isParam)
+        {
+            memmove(&currObj[0], &currObj[n], strlen(currObj) - n + 1);
+            
+            parVal = currObj;
+        }
+        else
+        {
+            if (strcmp(parVal, ""))
+                if (!strcmp(parVal, "filename"))
+                    filename = currObj;
+                else
+                    printf("Unrecognised input \"%s\"\n", parVal);
+                
+        }
     }
     
+    return 0;
 }
