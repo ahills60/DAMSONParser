@@ -19,12 +19,15 @@ sent to a log that can be reviewed.
 
 int main(int argc, char *argv[])
 {
-    char *currObj, *parVal, *filename;
+    char *currObj, *parVal, *filename = "\0";
     int i, n, a, isParam;
     
-    printf("\nDAMSON Parser");
+    printf("\nDAMSON Parser ");
     printf("Version: %i.%i.%i (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_DATE);
     printf("Author: Andrew Hills (a.hills@sheffield.ac.uk)\n\n");
+    
+    
+    parVal = "";
     
     // Go through arguments (if any)
     for (i = 0; i < argc; i++)
@@ -50,8 +53,16 @@ int main(int argc, char *argv[])
                     filename = currObj;
                 else
                     printf("Unrecognised input \"%s\"\n", parVal);
-                
         }
+    }
+    
+    if (filename[0] == '\0')
+    {
+        printf("No input file specified\n\n");
+    }
+    else
+    {
+        printf("Input file \"%s\" specified\n\n", filename);
     }
     
     return 0;
