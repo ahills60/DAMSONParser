@@ -177,44 +177,8 @@ void ProcessFile(char *filename)
         }
         lineNo++;
     }
+    // Once we're done, we should free up the memory that was used by the line variable
     free(line);
-    
-    // while((c == getc(fp)) != EOF)
-//     {
-//         if (c == '\n')
-//         {
-//             if (ptr > 0)
-//             {
-//                 if (lineNo <= 3)
-//                 {
-//                     dcheck = DAMSONHeaderCheck(line, lineNo - 1);
-//                     if (dcheck < 1)
-//                     {
-//                         printf("Error processing header on line %i.\n", lineNo);
-//                         fclose(fp);
-//                         return;
-//                     }
-//
-//                 }
-//                 else
-//                 {
-//                     dcheck = ParseLine(line, lineNo);
-//                     if (dcheck < 1)
-//                     {
-//                         printf("Error processing header on line %i.\n", lineNo);
-//                         fclose(fp);
-//                         return;
-//                     }
-//                 }
-//                 // Reset the pointer and line space:
-//                 ptr = 0;
-//                 memset(line, 0, sizeof(char) * COMMANDLENGTH);
-//             }
-//             // increment line number:
-//             lineNo++;
-//         }
-//
-//     }
 }
 
 int main(int argc, char *argv[])
@@ -235,35 +199,45 @@ int main(int argc, char *argv[])
         currObj = argv[i];
         isParam = 0;
         a = strlen(argv[i]);
+        // Detect the presence of an argument starter (i.e. "-"):
         for (n = 0; n < a; n++)
             if (argv[i][n] == '-')
                 isParam = 1;
             else
                 break;
+        // An argument starter was found. Extract the characters after this
         if (isParam)
         {
+            // Simply shift the contents of memory back.
             memmove(&currObj[0], &currObj[n], strlen(currObj) - n + 1);
             
             parVal = currObj;
         }
         else
         {
+            // No argument starter was found. This could be the result of an option. Let's check
             if (strcmp(parVal, ""))
+            {
+                // There was previously a parameter, let's determine what's being set.
                 if (!strcmp(parVal, "filename"))
                     filename = currObj;
                 else
                     printf("Unrecognised input \"%s\"\n", parVal);
-            else
+            }
+            else // No parameter was defined. Skip to the next argument.
                 continue;
         }
     }
     
+    // Quick check to see if the filename variable was specified.
     if (filename[0] == '\0')
     {
+        // No. At this point, we could check for piped input.
         printf("No input file specified\n\n");
     }
     else
     {
+        // Yes. Filename specified. Let the ProcessFile function handle this request.
         printf("Input file \"%s\" specified\n\n", filename);
         
         ProcessFile(filename);
