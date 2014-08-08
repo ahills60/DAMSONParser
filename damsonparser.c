@@ -44,6 +44,7 @@ int DAMSONHeaderCheck(char *line, int idx)
             
             if (scanout == EOF || scanout < 3)
                 return 0;
+            // Check to see if the header is as anticipated
             if (!strcmp(progname, "DAMSON"))
                 if (!strcmp(versionstr, "Version"))
                     printf("Recognised %s Compiler %s %s\n\n", progname, versionstr, version);
@@ -51,7 +52,9 @@ int DAMSONHeaderCheck(char *line, int idx)
                     return 0;
             else
                 return 0;
+            // Store this header line into a global variable. It may be useful
             HeaderLine1 = malloc(sizeof(char) * (14 + strlen(version)));
+            // In this instance, it's easier to just add the version to the end.
             sprintf(HeaderLine1, "DAMSON Version %s", version);
             break;
         case 1:
@@ -59,17 +62,24 @@ int DAMSONHeaderCheck(char *line, int idx)
             scanout = sscanf(line, "%s %s %s %s %u", csymb, cnotice, dname, aname, &year);
             if (scanout == EOF || scanout < 5)
                 return -1;
+            // Store this header line into a global variable. As before, this may be useful.
+            // First allocate memory then set all entries to null.
             HeaderLine2 = malloc(sizeof(char) * strlen(line));
             memset(HeaderLine2, 0, strlen(line));
+            // Next determine if the incoming line has a new line character (hint: it does normally)
             for (n = strlen(line); n > 0; n--)
                 if (line[n - 1] == '\n')
                     break;
+            // In the (rare) instance this may not have a new line character, say that we want the entire string.
             if (n == 0)
                 n = strlen(line);
+            // Copy the contents of the line to the header variable.
             memcpy(&HeaderLine2[0], &line[0], n);
             break;
         case 2:
             // This line is the time stamp that DAMSON was run
+            
+            // Check for the new line character.
             for (n = strlen(line); n > 0; n--)
             {
                 if (line[n - 1] == '\n')
@@ -79,9 +89,11 @@ int DAMSONHeaderCheck(char *line, int idx)
             if (n > 0)
                 line[n - 1] = '\0';
             
+            // Next, attempt to store the elements within the string into a timer object.
             if (strptime(line, "%a %b %d %H:%M:%S %Y", &timer) == NULL)
                 return -2;
             
+            // Reserve some memory and move the contents of the line to the header variable.
             HeaderLine3 = malloc(sizeof(char) * strlen(line));
             memcpy(&HeaderLine3[0], &line[0], n);
             break;
@@ -108,6 +120,7 @@ int ParseLine(char *line, int lineNo)
     // Now determine if there's something to look at:
     if (strcmp(line, ""))
     {
+        // Check for no file errors
         if(!strcmp(line, "No file?"))
         {
             // No file provided. Bad.
