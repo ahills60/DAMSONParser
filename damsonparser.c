@@ -30,7 +30,7 @@ char *HeaderLine1, *HeaderLine2, *HeaderLine3;
 // The index is used to inform the function of the current line number
 int DAMSONHeaderCheck(char *line, int idx)
 {
-    char *datestring, csymb[5], cnotice[10], dname[3], aname[10], progname[12], versionstr[10], version[10];
+    char csymb[5], cnotice[10], dname[3], aname[10], progname[12], versionstr[10], version[10];
     struct tm timer;
     int scanout, n;
     unsigned int *year;
@@ -75,10 +75,10 @@ int DAMSONHeaderCheck(char *line, int idx)
                 if (line[n - 1] == '\n')
                     break;
             }
-            if (n == 0)
-                n = strlen(line);
-            // Remove the new line by replacing it with null
-            line[n] = '\0';
+            // Remove the new line by replacing it with null if one was found
+            if (n > 0)
+                line[n - 1] = '\0';
+            
             if (strptime(line, "%a %b %d %H:%M:%S %Y", &timer) == NULL)
                 return -2;
             
@@ -126,7 +126,7 @@ int ParseLine(char *line, int lineNo)
 void ProcessFile(char *filename)
 {
     FILE *fp;
-    int c, ptr = 0, justRead = 0, lineNo = 1, dcheck = 0;
+    int ptr = 0, justRead = 0, lineNo = 1, dcheck = 0;
     char *line = NULL;
     size_t len;
     ssize_t lsize;
@@ -147,7 +147,7 @@ void ProcessFile(char *filename)
             dcheck = DAMSONHeaderCheck(line, lineNo - 1);
             if (dcheck < 1)
             {
-                printf("Error processing header on line %i.\n", lineNo);
+                printf("Error processing header on line %i.\n\n", lineNo);
                 fclose(fp);
                 return;
             }
@@ -157,7 +157,7 @@ void ProcessFile(char *filename)
             dcheck = ParseLine(line, lineNo);
             if (dcheck < 1)
             {
-                printf("Error processing script on line %i.\n", lineNo);
+                printf("Error processing script on line %i.\n\n", lineNo);
                 fclose(fp);
                 return;
             }
