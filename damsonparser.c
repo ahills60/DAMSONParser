@@ -57,9 +57,9 @@ int DAMSONHeaderCheck(char *line, int idx)
             break;
         case 2:
             // This line is the time stamp that DAMSON was run
-            for (n = 0; n < strlen(line); n++)
+            for (n = strlen(line); n > 0; n--)
             {
-                if (line[n] == '\n')
+                if (line[n - 1] == '\n')
                     break;
             }
             // Remove the new line by replacing it with null
