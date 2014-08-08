@@ -95,7 +95,31 @@ int DAMSONHeaderCheck(char *line, int idx)
 // This function parses a line of text
 int ParseLine(char *line, int lineNo)
 {
-    return 0;
+    int n;
+    
+    // First, remove the new line character
+    for (n = strlen(line); n > 0; n--)
+        if (line[n - 1] == '\n')
+            break;
+    // In the event no new line was found:
+    if (n > 0)
+        line[n - 1] = '\0';
+    
+    // Now determine if there's something to look at:
+    if (strcmp(line, ""))
+    {
+        if(!strcmp(line, "No file?"))
+        {
+            // No file provided. Bad.
+            printf("Error: No file was passed to the DAMSON compiler.\n");
+            return 0;
+        }
+    }
+    else
+    {
+        // There's nothing on this line. Move on.
+        return 1;
+    }
 }
 
 // This function processes files.
