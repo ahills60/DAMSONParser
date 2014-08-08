@@ -23,6 +23,9 @@ int DAMSONHeaderCheck(char *line, int idx);
 int ParseLine(char *line, int lineNo);
 void ProcessFile(char *filename);
 
+// Global Variables
+char *HeaderLine1, *HeaderLine2, *HeaderLine3;
+
 // This version checks the header of the DAMSON compiler output
 // The index is used to inform the function of the current line number
 int DAMSONHeaderCheck(char *line, int idx)
@@ -48,12 +51,22 @@ int DAMSONHeaderCheck(char *line, int idx)
                     return 0;
             else
                 return 0;
+            HeaderLine1 = malloc(sizeof(char) * (14 + strlen(version)));
+            sprintf(HeaderLine1, "DAMSON Version %s", version);
             break;
         case 1:
             // This line is the copyright notice
             scanout = sscanf(line, "%s %s %s %s %u", csymb, cnotice, dname, aname, &year);
             if (scanout == EOF || scanout < 5)
                 return -1;
+            HeaderLine2 = malloc(sizeof(char) * strlen(line));
+            memset(HeaderLine2, 0, strlen(line));
+            for (n = strlen(line); n > 0; n--)
+                if (line[n - 1] == '\n')
+                    break;
+            if (n == 0)
+                n = strlen(line);
+            memcpy(&HeaderLine2[0], &line[0], n);
             break;
         case 2:
             // This line is the time stamp that DAMSON was run
@@ -62,10 +75,15 @@ int DAMSONHeaderCheck(char *line, int idx)
                 if (line[n - 1] == '\n')
                     break;
             }
+            if (n == 0)
+                n = strlen(line);
             // Remove the new line by replacing it with null
             line[n] = '\0';
             if (strptime(line, "%a %b %d %H:%M:%S %Y", &timer) == NULL)
                 return -2;
+            
+            HeaderLine3 = malloc(sizeof(char) * strlen(line));
+            memcpy(&HeaderLine3[0], &line[0], n);
             break;
         default:
             return -3;
