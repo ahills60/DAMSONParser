@@ -24,7 +24,8 @@ int ParseLine(char *line, int lineNo);
 void ProcessFile(char *filename);
 
 // Global Variables
-char *HeaderLine1, *HeaderLine2, *HeaderLine3;
+char *HeaderLine1, *HeaderLine2, *HeaderLine3, *TheEndText;
+int TheEnd = 0;
 
 // This version checks the header of the DAMSON compiler output
 // The index is used to inform the function of the current line number
@@ -107,6 +108,7 @@ int DAMSONHeaderCheck(char *line, int idx)
 // This function parses a line of text
 int ParseLine(char *line, int lineNo)
 {
+    char *tempString;
     int n;
     
     // First, remove the new line character
@@ -120,12 +122,35 @@ int ParseLine(char *line, int lineNo)
     // Now determine if there's something to look at:
     if (strcmp(line, ""))
     {
-        // Check for no file errors
-        if(!strcmp(line, "No file?"))
+        if (!TheEnd)
         {
-            // No file provided. Bad.
-            printf("Error: No file was passed to the DAMSON compiler.\n");
-            return 0;
+            // Check for no file errors
+            if (!strcmp(line, "No file?"))
+            {
+                // No file provided. Bad.
+                printf("Error: No file was passed to the DAMSON compiler.\n");
+                return 0;
+            }
+            // Are we at the end?
+            if (strlen(line) > 10)
+            {
+                tempString = malloc(sizeof(char) * 11);
+                memset(&tempString, 0, 11);
+                memcpy(&tempString[0], &line[0], 10);
+                if (!strcmp(tempString, "Workspace:"))
+                {
+                    // Recognised keyword. It's highly probable we're at the end.
+                    return 2;
+                    // Raise the end flag.
+                    TheEnd = 1;
+                }
+            }
+            return 99;
+        }
+        else
+        {
+            // This is the end...
+            return 2;
         }
     }
     else
