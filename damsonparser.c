@@ -135,7 +135,7 @@ int ParseLine(char *line, int lineNo)
             if (strlen(line) > 10)
             {
                 tempString = malloc(sizeof(char) * 11);
-                memset(&tempString, 0, 11);
+                memset(tempString, 0, 11);
                 memcpy(&tempString[0], &line[0], 10);
                 if (!strcmp(tempString, "Workspace:"))
                 {
