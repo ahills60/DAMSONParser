@@ -108,8 +108,8 @@ int DAMSONHeaderCheck(char *line, int idx)
 // This function parses a line of text
 int ParseLine(char *line, int lineNo)
 {
-    char *tempString;
-    int n;
+    char *tempString, redusedLine = ;
+    int n, m = -1, drawLoc;
     
     // First, remove the new line character
     for (n = strlen(line); n > 0; n--)
@@ -137,15 +137,41 @@ int ParseLine(char *line, int lineNo)
                 tempString = malloc(sizeof(char) * 11);
                 memset(tempString, 0, 11);
                 memcpy(&tempString[0], &line[0], 10);
+                printf("D\n");
                 if (!strcmp(tempString, "Workspace:"))
                 {
                     // Recognised keyword. It's highly probable we're at the end.
-                    return 2;
                     // Raise the end flag.
                     TheEnd = 1;
+                    free(tempString);
+                    // ANd return to the calling function
+                    return 2;
+                }
+                free(tempString);
+            } else if (strlen(line) < 4)
+            {
+                // Line is too short to be anything useful
+                return 3;
+            }
+            // If here, we're not at the end. Look for recognisable input
+            for (n = 0; n < (strlen(line) - 4); n++)
+            {
+                tempString = malloc(sizeof(char) * 5);
+                memcpy(&tempString[0], &line[n], 4);
+                if (!strcmp(tempString, "draw"))
+                {
+                    // Found the word draw. We can try parsing this information
+                    m = n;
+                    break;
                 }
             }
-            return 99;
+            free(tempString);
+            // Check to see if these are equal. If so, then draw was found
+            if (m == n)
+            {
+                drawLoc = m;
+                
+            }
         }
         else
         {
