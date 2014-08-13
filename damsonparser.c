@@ -108,8 +108,9 @@ int DAMSONHeaderCheck(char *line, int idx)
 // This function parses a line of text
 int ParseLine(char *line, int lineNo)
 {
-    char *tempString, redusedLine = ;
-    int n, m = -1, drawLoc;
+    char *tempString;
+    int n, m = -1, drawLoc, lBrack = -1, rBrack = -1, eqsign = -1, comsign = -1, x, y, scanout;
+    float RVal, GVal, BVal;
     
     // First, remove the new line character
     for (n = strlen(line); n > 0; n--)
@@ -137,7 +138,6 @@ int ParseLine(char *line, int lineNo)
                 tempString = malloc(sizeof(char) * 11);
                 memset(tempString, 0, 11);
                 memcpy(&tempString[0], &line[0], 10);
-                printf("D\n");
                 if (!strcmp(tempString, "Workspace:"))
                 {
                     // Recognised keyword. It's highly probable we're at the end.
@@ -148,7 +148,7 @@ int ParseLine(char *line, int lineNo)
                     return 2;
                 }
                 free(tempString);
-            } else if (strlen(line) < 4)
+            } else if (strlen(line) < 6)
             {
                 // Line is too short to be anything useful
                 return 3;
@@ -157,21 +157,195 @@ int ParseLine(char *line, int lineNo)
             for (n = 0; n < (strlen(line) - 4); n++)
             {
                 tempString = malloc(sizeof(char) * 5);
+                memset(tempString, 0, 5);
                 memcpy(&tempString[0], &line[n], 4);
                 if (!strcmp(tempString, "draw"))
                 {
                     // Found the word draw. We can try parsing this information
                     m = n;
+                    free(tempString);
                     break;
                 }
+                free(tempString);
             }
-            free(tempString);
             // Check to see if these are equal. If so, then draw was found
             if (m == n)
             {
                 drawLoc = m;
+                for (n = drawLoc + 4; n < strlen(line); n++)
+                {
+                    switch(line[n])
+                    {
+                        case '(':
+                            if (lBrack < 0)
+                                lBrack = n;
+                            else
+                            {
+                                // Too many brackets
+                                printf("Warning: Disfigured draw call on line %i. Too many parentheses.\n", lineNo);
+                                return 4;
+                            }
+                            break;
+                        case ')':
+                            if (lBrack < 0)
+                            {
+                                printf("Warning: Parentheses could be out of order on line %i\n", lineNo);
+                                return 5;
+                            }
+                            if (rBrack < 0)
+                                rBrack = n;
+                            else
+                            {
+                                // Too many brackets
+                                printf("Warning: Disfigured draw call on line %i. Too many parentheses.\n", lineNo);
+                                return 5;
+                            }
+                            break;
+                        case '=':
+                            if (rBrack < 0)
+                            {
+                                printf("Warning: Equals encountered before closing parentheses on line %i.\n", lineNo);
+                            }
+                            if (eqsign < 0)
+                                eqsign = n;
+                            else
+                            {
+                                // Too many brackets
+                                printf("Warning: Disfigured draw call on line %i. Too many equals.\n", lineNo);
+                                return 6;
+                            }
+                            break;
+                        case ',':
+                            if (comsign >= 0)
+                            {
+                                printf("Warning: Multiple commas encountered on line %i.\n", lineNo);
+                                return 7;
+                            }
+                            if (lBrack >= 0 && rBrack < 0)
+                            {
+                                comsign = n;
+                            }
+                        // default:
+                            // Do nothing.
+                    }
+                }
                 
+                // By this point, we should know where we are:
+                if (lBrack < 0 || rBrack < 0 || eqsign < 0 || comsign < 0)
+                {
+                    // Invalid line.
+                    return 8;
+                }
+                
+                // Check scene dimensions
+                if (SceneHeight == 0 || SceneWidth == 0)
+                {
+                    printf("Error: Found draw command before scene dimensions defined on line %i.\n", lineNo);
+                    return 0;
+                }
+                
+                // If here, we have everything we need. Let's try parsing some of this information
+                
+                tempString = malloc(sizeof(char) * (rBrack - lBrack + 1));
+                memset(tempString, 0, (rBrack - lBrack + 1));
+                memcpy(&tempString[0], &line[lBrack + 1], rBrack - lBrack);
+                scanout = sscanf(tempString, "%i, %i", &x, &y);
+                free(tempString);
+                
+                if (scanout == EOF || scanout < 2)
+                {
+                    printf("Could not parse coordinates from draw command on line %i\n", lineNo);
+                    return 9;
+                }
+                
+                tempString = malloc(sizeof(char) * (strlen(line) - eqsign));
+                memset(tempString, 0, strlen(line) - eqsign);
+                memcpy(&tempString[0], &line[eqsign + 1], strlen(line) - eqsign - 1);
+                scanout = sscanf(tempString, "%f %f %f", &RVal, &GVal, &BVal);
+                free(tempString);
+                
+                if (scanout == EOF || scanout < 3)
+                {
+                    printf("Could not parse RGB values from draw command on line %i\n", lineNo);
+                    return 9;
+                }
+                
+                // If here, we've successfully extracted RGB values and coordinate information.
+                printf("X: %i Y: %i --> R: %f G: %f B: %f\n", x, y, RVal, GVal, BVal);
+                return 100;
             }
+            // No draw keyword was found. This could be a scene definition
+            if (strlen(line) > 17)
+            {
+                for (n = 0; n < strlen(line); n++)
+                {
+                    tempString = malloc(sizeof(char) * 10);
+                    memset(tempString, 0, 10);
+                    memcpy(&tempString[0], &line[n], 9);
+                    if (!strcasecmp(tempString, "dimension"))
+                    {
+                        // Found the word draw. We can try parsing this information
+                        m = n;
+                        free(tempString);
+                        break;
+                    }
+                    free(tempString);
+                }
+                if (m != n)
+                {
+                    // Assume this is debug information.
+                    return 3;
+                }
+                
+                // If here, we know the word dimensions. Try to find the word scene too.
+                for (n = 0; n < strlen(line); n++)
+                {
+                    tempString = malloc(sizeof(char) * 6);
+                    memset(tempString, 0, 6);
+                    memcpy(&tempString[0], &line[n], 5);
+                    if (!strcasecmp(tempString, "scene"))
+                    {
+                        // Found the word draw. We can try parsing this information
+                        m = n;
+                        free(tempString);
+                        break;
+                    }
+                    free(tempString);
+                }
+                if (m != n)
+                {
+                    // Assume this is debug information.
+                    return 3;
+                }
+                
+                // If here, we have the keywords scene and dimensions. We can therefore parse this:
+                for (n = strlen(line) - 1; n >= 0; n--)
+                    if ((line[n] < '0' || line[n] > '9') && (line[n] != ' ' && line[n] != '\t'))
+                        break;
+                if (n == 0)
+                {
+                    printf("Warning: Could not recognise scene description on line %i.\n", lineNo);
+                    return 3;
+                }
+                tempString = malloc(sizeof(char) * (strlen(line) - n + 2));
+                memset(tempString, 0, strlen(line) - n + 2);
+                memcpy(&tempString[0], &line[n + 1], strlen(line) - n + 1);
+                
+                printf("I parsed: \"%s\"\n", tempString);
+                
+                scanout = sscanf(tempString, "%i %i", &SceneWidth, &SceneHeight);
+                free(tempString);
+                if (scanout == EOF || scanout < 2)
+                {
+                    printf("Warning: Unable to understand scene description on line %i.\n", lineNo);
+                    return 3;
+                }
+                
+                printf("Scene dimensions recognised (%i x %i)\n", SceneWidth, SceneHeight);
+            }
+            
+            // Assume this is debug information.
+            return 3;
         }
         else
         {
@@ -293,6 +467,8 @@ int main(int argc, char *argv[])
         
         ProcessFile(filename);
     }
+    
+    printf("Finished parsing input.\n\n");
     
     return 0;
 }
