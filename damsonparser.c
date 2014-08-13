@@ -19,13 +19,178 @@ sent to a log that can be reviewed.
 #include "damsonparser.h"
 
 // Prototypes
+void initialisePixelStore(int width, int height);
+void clearPixelStore();
+void reshapeFunc(int newWidth, int newHeight);
+void idleFunc(void);
+void fadeActivity(void);
+void keyboardFunc(unsigned char key, int xmouse, int ymouse);
+void specialFunc(int key, int x, int y);
+static void printToScreen(int inset, const char *format, ...);
+void displayFunc(void);
+void initaliseGLUT(int argc, char *argv[]);
 int DAMSONHeaderCheck(char *line, int idx);
 int ParseLine(char *line, int lineNo);
 void ProcessFile(char *filename);
 
 // Global Variables
 char *HeaderLine1, *HeaderLine2, *HeaderLine3, *TheEndText;
-int TheEnd = 0;
+int TheEnd = 0, SceneWidth = 0, SceneHeight = 0;
+
+unsigned int *PixelStore;
+unsigned int *ActivityStore;
+
+// Information flags
+int DisplayInfo;
+int DisplayActivity;
+
+// Use for printing to screen:
+int PrintLoc;
+
+// Text buffer:
+char ScreenText[256];
+
+void initialisePixelStore(int width, int height)
+{
+    // Ensure we have enough memory to store pixel information
+    PixelStore = (unsigned int *) malloc(sizeof(unsigned int) * width * height);
+    ActivityStore = (unsigned int *) malloc(sizeof(unsigned int) * width * height);
+    
+    // Finally, set the space to null:
+    memset(PixelStore, 0, sizeof(unsigned int) * width * height);
+    memset(ActivityStore, 0, sizeof(unsigned int) * width * height);
+}
+
+// Quick function to wipe the pixel store
+void clearPixelStore()
+{
+    // A simple wipe of the memory location:
+    memset(PixelStore, 0, sizeof(unsigned int) * SceneWidth * SceneHeight);
+}
+
+// Function to define window resizing
+void reshapeFunc(int newWidth, int newHeight)
+{
+    // We don't allow this to be resized so change it back:
+    glutReshapeWindow(SceneWidth, SceneHeight);
+}
+
+// Function to define what happens in idle time
+void idleFunc(void)
+{
+    glutPostRedisplay();
+}
+
+// Function to fade activity pixels
+void fadeActivity(void)
+{
+    int i, a;
+    for (i = 0; i < SceneWidth * SceneHeight; i++)
+    {
+        a = ActivityStore[i] >> 24;
+        a--;
+        // Ensure that a is within the bounds
+        a = (a < 0) ? 0 : a;
+        ActivityStore[i] = 0 | 255 < 8 | 0 << 16 | a << 24;
+    }
+}
+
+// Function to take control of user input elements
+void keyboardFunc(unsigned char key, int xmouse, int ymouse)
+{
+    
+    
+}
+
+// Function to handle special keys
+void specialFunc(int key, int x, int y)
+{
+    
+    
+}
+
+// Function to print text to the screen
+static void printToScreen(int inset, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vsprintf(ScreenText, format, args);
+    va_end(args);
+    
+    glRasterPos2i(inset, PrintLoc);
+    int i;
+    for (i = 0; i < strlen(ScreenText); i++)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ScreenText[i]);
+    
+    PrintLoc -= 20;
+}
+
+// Function to handle what's displayed within the window
+void displayFunc(void)
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+    glRasterPos2i(0, 0);
+    
+    // Display the contents of the pixel store to the screen
+    glDrawPixels(SceneWidth, SceneHeight, GL_RGBA, GL_UNSIGNED_BYTE, &PixelStore[0]);
+    
+    // Display activity if desired
+    if (DisplayActivity)
+    {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDrawPixels(SceneWidth, SceneHeight, GL_RGBA, GL_UNSIGNED_BYTE, &ActivityStore[0]);
+        glDisable(GL_BLEND);
+        fadeActivity();
+    }
+    
+    // Check to see if information should be displayed
+    if (DisplayInfo)
+    {
+        glPushMatrix();
+        glLoadIdentity();
+        glOrtho(0, SceneWidth, 0, SceneHeight, -1.0, 1.0);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glColor4f(0.0, 0.0, 0.0, 0.7);
+        glRecti(5, PrintLoc, 340, SceneHeight - 5);
+        glColor3f(1.0, 1.0, 1.0);
+        PrintLoc = SceneHeight - 30;
+        
+        printToScreen(10, "DAMSON parser version %i.%i.%i (%s)", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_DATE);
+        printToScreen(10, " ");
+        glDisable(GL_BLEND);
+        glPopMatrix();
+    }
+    
+    glutSwapBuffers();
+}
+
+// function to initialise GLUT window and output
+void initaliseGLUT(int argc, char *argv[])
+{
+    DisplayInfo = 0;
+    DisplayActivity = 0;
+    glutInitWindowSize(SceneWidth, SceneHeight);
+    
+    // Set up the window position:
+    glutInitWindowPosition(0, 0);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA | GLUT_DOUBLE);
+    
+    glutInit(&argc, argv);
+    
+    glutCreateWindow("DAMSON parser visualiser");
+    
+    glutDisplayFunc(displayFunc);
+    glutIdleFunc(idleFunc);
+    glutKeyboardFunc(keyboardFunc);
+    glutSpecialFunc(specialFunc);
+    glutReshapeFunc(reshapeFunc);
+    
+    glViewport(0, 0, SceneWidth, SceneHeight);
+    glLoadIdentity();
+    glOrtho(0.0, SceneWidth - 1.0, 0.0, SceneHeight - 1.0, -1.0,  1.0);
+}
 
 // This version checks the header of the DAMSON compiler output
 // The index is used to inform the function of the current line number
