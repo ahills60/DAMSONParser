@@ -19,7 +19,7 @@ sent to a log that can be reviewed.
 #include "damsonparser.h"
 
 // Prototypes
-void initialisePixelStore(int width, int height);
+void initialisePixelStore();
 void clearPixelStore();
 void reshapeFunc(int newWidth, int newHeight);
 void idleFunc(void);
@@ -51,15 +51,15 @@ int PrintLoc;
 // Text buffer:
 char ScreenText[256];
 
-void initialisePixelStore(int width, int height)
+void initialisePixelStore()
 {
     // Ensure we have enough memory to store pixel information
-    PixelStore = (unsigned int *) malloc(sizeof(unsigned int) * width * height);
-    ActivityStore = (unsigned int *) malloc(sizeof(unsigned int) * width * height);
+    PixelStore = (unsigned int *) malloc(sizeof(unsigned int) * SceneWidth * SceneHeight);
+    ActivityStore = (unsigned int *) malloc(sizeof(unsigned int) * SceneWidth * SceneHeight);
     
     // Finally, set the space to null:
-    memset(PixelStore, 0, sizeof(unsigned int) * width * height);
-    memset(ActivityStore, 0, sizeof(unsigned int) * width * height);
+    memset(PixelStore, 0, sizeof(unsigned int) * SceneWidth * SceneHeight);
+    memset(ActivityStore, 0, sizeof(unsigned int) * SceneWidth * SceneHeight);
 }
 
 // Quick function to wipe the pixel store
@@ -516,6 +516,7 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
                 }
                 
                 printf("Scene dimensions recognised (%i x %i)\n", SceneWidth, SceneHeight);
+                initialisePixelStore();
                 initialiseGLUT(argc, argv);
             }
             
