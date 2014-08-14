@@ -14,11 +14,13 @@ sent to a log that can be reviewed.
 #include <string.h>
 #include <GL/glut.h>
 #include <time.h>
+#include <pthread.h>
 
 // Program defines
 #include "damsonparser.h"
 
 // Prototypes
+void *OpenVisualiser(void *null);
 void initialisePixelStore();
 void clearPixelStore();
 void reshapeFunc(int newWidth, int newHeight);
@@ -50,6 +52,15 @@ int PrintLoc;
 
 // Text buffer:
 char ScreenText[256];
+
+// Thread for reading
+pthread_t input_thread;
+
+void *OpenVisualiser(void *null)
+{
+    printf("Starting GLUT main loop...\n");
+    glutMainLoop();
+}
 
 void initialisePixelStore()
 {
@@ -99,7 +110,18 @@ void fadeActivity(void)
 // Function to take control of user input elements
 void keyboardFunc(unsigned char key, int xmouse, int ymouse)
 {
-    
+    switch (key)
+    {
+        case 'a':
+        case 'A':
+            // Activity
+            DisplayActivity = !DisplayActivity;
+            break;
+        case 'i':
+        case 'I':
+            // Display information
+            DisplayInfo = !DisplayInfo;
+    }
     
 }
 
@@ -171,14 +193,16 @@ void displayFunc(void)
 void initialiseGLUT(int argc, char *argv[])
 {
     DisplayInfo = 0;
-    DisplayActivity = 0;
+    DisplayActivity = 1;
     glutInitWindowSize(SceneWidth, SceneHeight);
     
     // Set up the window position:
     glutInitWindowPosition(0, 0);
     glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA | GLUT_DOUBLE);
     
+    printf("Initialising GLUT... ");
     glutInit(&argc, argv);
+    printf("Done\n");
     
     glutCreateWindow("DAMSON parser visualiser");
     
@@ -191,12 +215,17 @@ void initialiseGLUT(int argc, char *argv[])
     glViewport(0, 0, SceneWidth, SceneHeight);
     glLoadIdentity();
     glOrtho(0.0, SceneWidth - 1.0, 0.0, SceneHeight - 1.0, -1.0,  1.0);
+    // printf("Creating visualiser thread...\n");
+    // pthread_create(&input_thread, NULL, OpenVisualiser, 0);
+    // printf("Visualiser thread created.\n");
 }
 
 // Shortcut method for populating the pixelstore and activitystore variables
 void setPixel(int x, int y, float RVal, float GVal, float BVal)
 {
     int idx = y * SceneWidth + x, iR = (int) ((RVal > 1.0 ? 1.0 : RVal) * 255), iG = (int) ((GVal > 1.0 ? 1.0 : GVal) * 255), iB = (int) ((BVal > 1.0 ? 1.0 : BVal) * 255);
+    
+    // printf("At <%i, %i>, RGB %f, %f, %f is %i, %i, %i\n", x, y, RVal, GVal, BVal, iR, iG, iB);
     
     PixelStore[idx] = iR | iG << 8 | iB << 16;
     ActivityStore[idx] = 0 | 255 < 8 | 0 << 16 | 255 << 24;
@@ -587,6 +616,7 @@ int main(int argc, char *argv[])
 {
     char *currObj, *parVal, *filename = "\0";
     int i, n, a, isParam;
+    void *status;
     
     printf("\nDAMSON Parser ");
     printf("Version: %i.%i.%i (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_DATE);
@@ -646,6 +676,7 @@ int main(int argc, char *argv[])
     }
     
     printf("Finished parsing input.\n\n");
-    
+    // pthread_join(input_thread, &status);
+    glutMainLoop();
     return 0;
 }
