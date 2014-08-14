@@ -28,7 +28,7 @@ void keyboardFunc(unsigned char key, int xmouse, int ymouse);
 void specialFunc(int key, int x, int y);
 static void printToScreen(int inset, const char *format, ...);
 void displayFunc(void);
-void initaliseGLUT(int argc, char *argv[]);
+void initialiseGLUT(int argc, char *argv[]);
 int DAMSONHeaderCheck(char *line, int idx);
 int ParseLine(char *line, int lineNo);
 void ProcessFile(char *filename);
@@ -167,7 +167,7 @@ void displayFunc(void)
 }
 
 // function to initialise GLUT window and output
-void initaliseGLUT(int argc, char *argv[])
+void initialiseGLUT(int argc, char *argv[])
 {
     DisplayInfo = 0;
     DisplayActivity = 0;
