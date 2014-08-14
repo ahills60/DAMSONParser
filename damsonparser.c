@@ -31,11 +31,11 @@ void displayFunc(void);
 void initialiseGLUT(int argc, char *argv[]);
 void setPixel(int x, int y, float RVal, float GVal, float BVal);
 int DAMSONHeaderCheck(char *line, int idx);
-int ParseLine(char *line, int lineNo);
-void ProcessFile(char *filename);
+int ParseLine(char *line, int lineNo, int argc, char *argv[]);
+void ProcessFile(char *filename, int argc, char *argv[]);
 
 // Global Variables
-char *HeaderLine1, *HeaderLine2, *HeaderLine3, *TheEndText;
+char *HeaderLine1, *HeaderLine2, *HeaderLine3, *TheEndText, *LastErrorMessage = "";
 int TheEnd = 0, SceneWidth = 0, SceneHeight = 0;
 
 unsigned int *PixelStore;
@@ -281,7 +281,7 @@ int DAMSONHeaderCheck(char *line, int idx)
 }
 
 // This function parses a line of text
-int ParseLine(char *line, int lineNo)
+int ParseLine(char *line, int lineNo, int argc, char *argv[])
 {
     char *tempString;
     int n, m = -1, drawLoc, lBrack = -1, rBrack = -1, eqsign = -1, comsign = -1, x, y, scanout;
@@ -446,7 +446,8 @@ int ParseLine(char *line, int lineNo)
                 }
                 
                 // If here, we've successfully extracted RGB values and coordinate information.
-                printf("X: %i Y: %i --> R: %f G: %f B: %f\n", x, y, RVal, GVal, BVal);
+                // printf("X: %i Y: %i --> R: %f G: %f B: %f\n", x, y, RVal, GVal, BVal);
+                setPixel(x, y, RVal, GVal, BVal);
                 return 100;
             }
             // No draw keyword was found. This could be a scene definition
@@ -506,8 +507,6 @@ int ParseLine(char *line, int lineNo)
                 memset(tempString, 0, strlen(line) - n + 2);
                 memcpy(&tempString[0], &line[n + 1], strlen(line) - n + 1);
                 
-                printf("I parsed: \"%s\"\n", tempString);
-                
                 scanout = sscanf(tempString, "%i %i", &SceneWidth, &SceneHeight);
                 free(tempString);
                 if (scanout == EOF || scanout < 2)
@@ -517,6 +516,7 @@ int ParseLine(char *line, int lineNo)
                 }
                 
                 printf("Scene dimensions recognised (%i x %i)\n", SceneWidth, SceneHeight);
+                initialiseGLUT(argc, argv);
             }
             
             // Assume this is debug information.
@@ -536,7 +536,7 @@ int ParseLine(char *line, int lineNo)
 }
 
 // This function processes files.
-void ProcessFile(char *filename)
+void ProcessFile(char *filename, int argc, char *argv[])
 {
     FILE *fp;
     int ptr = 0, justRead = 0, lineNo = 1, dcheck = 0;
@@ -567,7 +567,7 @@ void ProcessFile(char *filename)
         }
         else
         {
-            dcheck = ParseLine(line, lineNo);
+            dcheck = ParseLine(line, lineNo, argc, argv);
             if (dcheck < 1)
             {
                 printf("Error processing script on line %i.\n\n", lineNo);
@@ -579,6 +579,7 @@ void ProcessFile(char *filename)
     }
     // Once we're done, we should free up the memory that was used by the line variable
     free(line);
+    fclose(fp);
 }
 
 int main(int argc, char *argv[])
@@ -640,7 +641,7 @@ int main(int argc, char *argv[])
         // Yes. Filename specified. Let the ProcessFile function handle this request.
         printf("Input file \"%s\" specified\n\n", filename);
         
-        ProcessFile(filename);
+        ProcessFile(filename, argc, argv);
     }
     
     printf("Finished parsing input.\n\n");
