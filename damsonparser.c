@@ -29,6 +29,7 @@ void specialFunc(int key, int x, int y);
 static void printToScreen(int inset, const char *format, ...);
 void displayFunc(void);
 void initialiseGLUT(int argc, char *argv[]);
+void setPixel(int x, int y, float RVal, float GVal, float BVal);
 int DAMSONHeaderCheck(char *line, int idx);
 int ParseLine(char *line, int lineNo);
 void ProcessFile(char *filename);
@@ -190,6 +191,15 @@ void initialiseGLUT(int argc, char *argv[])
     glViewport(0, 0, SceneWidth, SceneHeight);
     glLoadIdentity();
     glOrtho(0.0, SceneWidth - 1.0, 0.0, SceneHeight - 1.0, -1.0,  1.0);
+}
+
+// Shortcut method for populating the pixelstore and activitystore variables
+void setPixel(int x, int y, float RVal, float GVal, float BVal)
+{
+    int idx = y * SceneWidth + x, iR = (int) ((RVal > 1.0 ? 1.0 : RVal) * 255), iG = (int) ((GVal > 1.0 ? 1.0 : GVal) * 255), iB = (int) ((BVal > 1.0 ? 1.0 : BVal) * 255);
+    
+    PixelStore[idx] = iR | iG << 8 | iB << 16;
+    ActivityStore[idx] = 0 | 255 < 8 | 0 << 16 | 255 << 24;
 }
 
 // This version checks the header of the DAMSON compiler output
