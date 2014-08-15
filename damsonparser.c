@@ -223,7 +223,7 @@ void initialiseGLUT(int argc, char *argv[])
 // Shortcut method for populating the pixelstore and activitystore variables
 void setPixel(int x, int y, float RVal, float GVal, float BVal)
 {
-    int idx = y * SceneWidth + x, iR = (int) ((RVal > 1.0 ? 1.0 : RVal) * 255), iG = (int) ((GVal > 1.0 ? 1.0 : GVal) * 255), iB = (int) ((BVal > 1.0 ? 1.0 : BVal) * 255);
+    int idx = y * SceneWidth + x, iR = (int) ((RVal > 1.0 ? 1.0 : (RVal < 0 ? 0 : RVal)) * 255), iG = (int) ((GVal > 1.0 ? 1.0 : (GVal < 0 ? 0 : GVal)) * 255), iB = (int) ((BVal > 1.0 ? 1.0 : (BVal < 0 ? 0 : BVal)) * 255);
     
     // printf("At <%i, %i>, RGB %f, %f, %f is %i, %i, %i\n", x, y, RVal, GVal, BVal, iR, iG, iB);
     
