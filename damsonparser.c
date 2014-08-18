@@ -121,6 +121,10 @@ void keyboardFunc(unsigned char key, int xmouse, int ymouse)
         case 'I':
             // Display information
             DisplayInfo = !DisplayInfo;
+            break;
+        case 'q':
+        case 'Q':
+            exit(0);
     }
     
 }
