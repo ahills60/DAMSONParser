@@ -10,6 +10,7 @@ sent to a log that can be reviewed.
 // Standard IO defines
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
 #include <GL/glut.h>
@@ -17,6 +18,8 @@ sent to a log that can be reviewed.
 #include <pthread.h>
 // For POSIX piping
 #include <unistd.h>
+// For PNG files
+#include <png.h>
 
 // Program defines
 #include "damsonparser.h"
