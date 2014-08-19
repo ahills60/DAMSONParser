@@ -643,17 +643,12 @@ void ProcessPipe()
     // Initialise the line
     memset(line, 0, 65535);
     
-    while((c = getchar()))
+    while((c = getchar()) && tries < 5)
     {
         if (c == EOF)
         {
-            if (tries > 5)
-            {
-                break;
-            }
-            else
-                continue;
             tries++;
+            continue;
         }
             
         // Convert int to char
