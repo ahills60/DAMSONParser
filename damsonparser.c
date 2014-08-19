@@ -22,8 +22,6 @@ sent to a log that can be reviewed.
 #include "damsonparser.h"
 
 // Prototypes
-struct arg_holder3;
-struct arg_holder2;
 void *OpenVisualiser(void *null);
 void initialisePixelStore();
 void clearPixelStore();
@@ -37,11 +35,11 @@ void displayFunc(void);
 void initialiseGLUT(int argc, char *argv[]);
 void setPixel(int x, int y, float RVal, float GVal, float BVal);
 int DAMSONHeaderCheck(char *line, int idx);
-int ParseLine(char *line, int lineNo, int argc, char *argv[]);
-void ProcessFile(char *filename, int argc, char *argv[]);
+int ParseLine(char *line, int lineNo);
+void ProcessFile(char *filename);
 void *ProcessFileThread(void *arg);
-void ProcessThread(int argc, char *argv[]);
-void *ProcessPipeThread(void *arg);
+void ProcessThread();
+void *ProcessPipeThread(void);
 
 // Global Variables
 char *HeaderLine1, *HeaderLine2, *HeaderLine3, *TheEndText, *LastErrorMessage = "";
@@ -63,21 +61,6 @@ char ScreenText[256];
 
 // Thread for reading
 pthread_t input_thread;
-
-// Structure for arguments
-struct arg_holder3
-{
-    int argc;
-    char **argv;
-    char *filename;
-};
-
-struct arg_holder2
-{
-    int argc;
-    char **argv;
-    char *filename;
-};
 
 void *OpenVisualiser(void *null)
 {
@@ -337,7 +320,7 @@ int DAMSONHeaderCheck(char *line, int idx)
 }
 
 // This function parses a line of text
-int ParseLine(char *line, int lineNo, int argc, char *argv[])
+int ParseLine(char *line, int lineNo)
 {
     char *tempString;
     int n, m = -1, drawLoc, lBrack = -1, rBrack = -1, eqsign = -1, comsign = -1, x, y, scanout;
@@ -595,7 +578,7 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
 }
 
 // This function processes files.
-void ProcessFile(char *filename, int argc, char *argv[])
+void ProcessFile(char *filename)
 {
     FILE *fp;
     int ptr = 0, lineNo = 1, dcheck = 0;
@@ -627,7 +610,7 @@ void ProcessFile(char *filename, int argc, char *argv[])
         }
         else
         {
-            dcheck = ParseLine(line, lineNo, argc, argv);
+            dcheck = ParseLine(line, lineNo);
             if (dcheck < 1)
             {
                 printf("Error processing script on line %i.\n\n", lineNo);
@@ -645,14 +628,14 @@ void ProcessFile(char *filename, int argc, char *argv[])
 
 void *ProcessFileThread(void *arg)
 {
-    struct arg_holder3 arg_struct = *(struct arg_holder3 *) arg;
+    char *filename = (char *) arg;
     
-    ProcessFile(arg_struct.filename, arg_struct.argc, arg_struct.argv);
+    ProcessFile(filename);
     
 }
 
 // This function processes files.
-void ProcessPipe(int argc, char *argv[])
+void ProcessPipe()
 {
     int ptr = 0, lineNo = 0, dcheck = 0, c, tries = 0;
     char line[65535], ch;
@@ -694,7 +677,7 @@ void ProcessPipe(int argc, char *argv[])
             }
             else if (lineNo > 3)
             {
-                dcheck = ParseLine(&line, lineNo, argc, argv);
+                dcheck = ParseLine(&line, lineNo);
                 if (dcheck < 1)
                 {
                     printf("Error processing script on line %i.\n\n", lineNo);
@@ -725,7 +708,7 @@ void ProcessPipe(int argc, char *argv[])
         }
         else
         {
-            dcheck = ParseLine(line, lineNo, argc, argv);
+            dcheck = ParseLine(line, lineNo);
             if (dcheck < 1)
             {
                 printf("Error processing script on line %i.\n\n", lineNo);
@@ -737,12 +720,9 @@ void ProcessPipe(int argc, char *argv[])
     // Once we're done, we should free up the memory that was used by the line variable
 }
 
-void *ProcessPipeThread(void *arg)
+void *ProcessPipeThread(void)
 {
-    struct arg_holder2 arg_struct = *(struct arg_holder2 *) arg;
-    
-    ProcessPipe(arg_struct.argc, arg_struct.argv);
-    
+    ProcessPipe();
     printf("Pipe read complete.\n");
     
 }
@@ -808,14 +788,9 @@ int main(int argc, char *argv[])
         else
         {
             // Connection is not connected to a terminal. Could be a pipe or file.
-            struct arg_holder2 *arg_struct2 = malloc(sizeof(*arg_struct2));
-            
-            arg_struct2->filename = filename;
-            arg_struct2->argc = argc;
-            arg_struct2->argv = argv;
             
             graphicsFlag = 0;
-            pthread_create(&procThread, NULL, ProcessPipeThread, arg_struct2);
+            pthread_create(&procThread, NULL, ProcessPipeThread, 0);
         }
     }
     else
@@ -823,13 +798,9 @@ int main(int argc, char *argv[])
         // Yes. Filename specified. Let the ProcessFile function handle this request.
         printf("Input file \"%s\" specified\n\n", filename);
         
-        struct arg_holder3 *arg_struct3 = malloc(sizeof(*arg_struct3));
-        arg_struct3->filename = filename;
-        arg_struct3->argc = argc;
-        arg_struct3->argv = argv;
         // Set the graphics flag and then create a thread
         graphicsFlag = 0;
-        pthread_create(&procThread, NULL, ProcessFileThread, arg_struct3);
+        pthread_create(&procThread, NULL, ProcessFileThread, (void *) filename);
     }
     while(graphicsFlag == 0)
     {
