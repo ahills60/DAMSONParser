@@ -21,6 +21,10 @@ sent to a log that can be reviewed.
 // Program defines
 #include "damsonparser.h"
 
+// Defines:
+#define MAX_CHARS       65536
+
+
 // Prototypes
 void *OpenVisualiser(void *null);
 void initialisePixelStore();
@@ -638,10 +642,10 @@ void *ProcessFileThread(void *arg)
 void ProcessPipe()
 {
     int ptr = 0, lineNo = 0, dcheck = 0, c, tries = 0;
-    char line[65535], ch;
+    char line[MAX_CHARS], ch;
     
     // Initialise the line
-    memset(line, 0, 65535);
+    memset(line, 0, MAX_CHARS);
     
     while((c = getchar()) && tries < 5)
     {
@@ -683,7 +687,7 @@ void ProcessPipe()
             
             // Reset the line buffer
             ptr = 0;
-            memset(line, 0, 65535);
+            memset(line, 0, MAX_CHARS);
         }
     }
     // Check to see if the buffer is empty
