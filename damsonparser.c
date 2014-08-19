@@ -245,7 +245,7 @@ void setPixel(int x, int y, float RVal, float GVal, float BVal)
     // printf("At <%i, %i>, RGB %f, %f, %f is %i, %i, %i\n", x, y, RVal, GVal, BVal, iR, iG, iB);
     
     PixelStore[idx] = iR | iG << 8 | iB << 16;
-    ActivityStore[idx] = 0 | 255 < 8 | 0 << 16 | 255 << 24;
+    ActivityStore[idx] = 0 | (255 < 8) | (0 << 16) | (255 << 24);
 }
 
 // This version checks the header of the DAMSON compiler output
@@ -588,7 +588,7 @@ int ParseLine(char *line, int lineNo)
 void ProcessFile(char *filename)
 {
     FILE *fp;
-    int ptr = 0, lineNo = 1, dcheck = 0;
+    int lineNo = 1, dcheck = 0;
     char *line = NULL;
     size_t len;
     ssize_t lsize;
@@ -733,7 +733,6 @@ int main(int argc, char *argv[])
 {
     char *currObj, *parVal, *filename = "\0";
     int i, n, a, isParam;
-    void *status;
     
     printf("\nDAMSON Parser ");
     printf("Version: %i.%i.%i (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_DATE);
