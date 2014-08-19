@@ -493,11 +493,13 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
                 memset(tempString, 0, strlen(line) - eqsign);
                 memcpy(&tempString[0], &line[eqsign + 1], strlen(line) - eqsign - 1);
                 scanout = sscanf(tempString, "%f %f %f", &RVal, &GVal, &BVal);
+                // printf("%i: \"%s\"\n", lineNo, tempString);
                 free(tempString);
                 
                 if (scanout == EOF || scanout < 3)
                 {
                     printf("Could not parse RGB values from draw command on line %i\n", lineNo);
+                    
                     return 9;
                 }
                 
@@ -573,7 +575,6 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
                 
                 printf("Scene dimensions recognised (%i x %i)\n", SceneWidth, SceneHeight);
                 initialisePixelStore();
-                initialiseGLUT(argc, argv);
                 graphicsFlag = 1;
             }
             
@@ -597,7 +598,7 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
 void ProcessFile(char *filename, int argc, char *argv[])
 {
     FILE *fp;
-    int ptr = 0, justRead = 0, lineNo = 1, dcheck = 0;
+    int ptr = 0, lineNo = 1, dcheck = 0;
     char *line = NULL;
     size_t len;
     ssize_t lsize;
@@ -653,16 +654,25 @@ void *ProcessFileThread(void *arg)
 // This function processes files.
 void ProcessPipe(int argc, char *argv[])
 {
-    int ptr = 0, justRead = 0, lineNo = 0, dcheck = 0, c;
+    int ptr = 0, lineNo = 0, dcheck = 0, c, tries = 0;
     char line[65535], ch;
-    size_t len;
-    ssize_t lsize;
     
     // Initialise the line
     memset(line, 0, 65535);
     
-    while((c = getchar()) != EOF)
+    while((c = getchar()))
     {
+        if (c == EOF)
+        {
+            if (tries > 5)
+            {
+                break;
+            }
+            else
+                continue;
+            tries++;
+        }
+            
         // Convert int to char
         ch = (char) c;
         // Add this character to the buffer
@@ -732,6 +742,8 @@ void *ProcessPipeThread(void *arg)
     struct arg_holder2 arg_struct = *(struct arg_holder2 *) arg;
     
     ProcessPipe(arg_struct.argc, arg_struct.argv);
+    
+    printf("Pipe read complete.\n");
     
 }
 
@@ -824,8 +836,10 @@ int main(int argc, char *argv[])
         // Do nothing
     }
     if (graphicsFlag == 1)
+    {
+        initialiseGLUT(argc, argv);
         glutMainLoop();
-    
+    }
     // printf("Finished parsing input.\n\n");
     // pthread_join(input_thread, &status);
     
