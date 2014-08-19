@@ -10,6 +10,7 @@ sent to a log that can be reviewed.
 // Standard IO defines
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
 #include <GL/glut.h>
@@ -17,6 +18,8 @@ sent to a log that can be reviewed.
 #include <pthread.h>
 // For POSIX piping
 #include <unistd.h>
+// For PNG files
+#include <png.h>
 
 // Program defines
 #include "damsonparser.h"
@@ -32,6 +35,7 @@ void clearPixelStore();
 void reshapeFunc(int newWidth, int newHeight);
 void idleFunc(void);
 void fadeActivity(void);
+void writePNGFile(char *filename);
 void keyboardFunc(unsigned char key, int xmouse, int ymouse);
 void specialFunc(int key, int x, int y);
 static void printToScreen(int inset, const char *format, ...);
@@ -117,6 +121,86 @@ void fadeActivity(void)
     }
 }
 
+// Function to write PNG files
+void writePNGFile(char *filename)
+{
+    int x, y, pixel_size = 3, depth = 8;
+    FILE *fp;
+    png_structp png_ptr = NULL;
+    png_infop info_ptr = NULL;
+    png_byte **row_pointers;
+    
+    // Now write the PNG file
+    fp = fopen(filename, "wb");
+    if (!fp)
+    {
+        printf("Error opening file for PNG creation.\n\n");
+        return;
+    }
+    
+    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (png_ptr == NULL)
+    {
+        printf("Error writing PNG structure\n\n");
+        goto png_create_write_struct_fail;
+    }
+    
+    info_ptr = png_create_info_struct(png_ptr);
+    if (info_ptr == NULL)
+    {
+        printf("Error creating PNG information structure.\n\n");
+        goto png_create_info_struct_fail;
+    }
+    
+    // Set up error handling
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        printf("Error encountered when writing PNG file.\n\n");
+        goto png_fail;
+    }
+    
+    // Set the image attributes
+    png_set_IHDR(png_ptr, info_ptr, SceneWidth, SceneHeight, depth, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    
+    // Initialise rows of PNG file:
+    row_pointers = png_malloc(png_ptr, SceneHeight * sizeof(png_byte *));
+    
+    for (y = 0; y < SceneHeight; ++y)
+    {
+        png_byte *row = png_malloc(png_ptr, sizeof(uint8_t) * SceneWidth * pixel_size);
+        row_pointers[y] = row;
+        for (x = 0; x < SceneWidth; ++x)
+        {
+            *row++ = (uint8_t) (PixelStore[(SceneHeight - y) * SceneWidth + x] & 0xFF); // R
+            *row++ = (uint8_t) ((PixelStore[(SceneHeight - y) * SceneWidth + x] >> 8) & 0xFF); // G
+            *row++ = (uint8_t) ((PixelStore[(SceneHeight - y) * SceneWidth + x] >> 16) & 0xFF); // B
+        }
+    }
+    
+    // Write the image data to the file pointer:
+    png_init_io(png_ptr, fp);
+    png_set_rows(png_ptr, info_ptr, row_pointers);
+    png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+    
+    // File has been written to by this point. Tidy up.
+    printf("PNG file created.\n\n");
+    
+    // Now free memory:
+    for (y = 0; y < SceneHeight; y++)
+    {
+        png_free(png_ptr, row_pointers[y]);
+    }
+    png_free(png_ptr, row_pointers);
+    
+png_fail:
+png_create_info_struct_fail:
+    // Finally destroy the structure in memory:
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+png_create_write_struct_fail:
+    // Close file pointer
+    fclose(fp);
+}
+
 // Function to take control of user input elements
 void keyboardFunc(unsigned char key, int xmouse, int ymouse)
 {
@@ -131,6 +215,11 @@ void keyboardFunc(unsigned char key, int xmouse, int ymouse)
         case 'I':
             // Display information
             DisplayInfo = !DisplayInfo;
+            break;
+        case 's':
+        case 'S':
+            // Save image as PNG
+            writePNGFile("output.png");
             break;
         case 'q':
         case 'Q':
@@ -242,7 +331,7 @@ void setPixel(int x, int y, float RVal, float GVal, float BVal)
     // printf("At <%i, %i>, RGB %f, %f, %f is %i, %i, %i\n", x, y, RVal, GVal, BVal, iR, iG, iB);
     
     PixelStore[idx] = iR | iG << 8 | iB << 16;
-    ActivityStore[idx] = 0 | 255 < 8 | 0 << 16 | 255 << 24;
+    ActivityStore[idx] = 0 | (255 < 8) | (0 << 16) | (255 << 24);
 }
 
 // This version checks the header of the DAMSON compiler output
@@ -585,7 +674,7 @@ int ParseLine(char *line, int lineNo)
 void ProcessFile(char *filename)
 {
     FILE *fp;
-    int ptr = 0, lineNo = 1, dcheck = 0;
+    int lineNo = 1, dcheck = 0;
     char *line = NULL;
     size_t len;
     ssize_t lsize;
@@ -636,6 +725,7 @@ void *ProcessFileThread(void *arg)
     
     ProcessFile(filename);
     
+    printf("File read complete.\n\n");
 }
 
 // This function processes files.
@@ -730,7 +820,6 @@ int main(int argc, char *argv[])
 {
     char *currObj, *parVal, *filename = "\0";
     int i, n, a, isParam;
-    void *status;
     
     printf("\nDAMSON Parser ");
     printf("Version: %i.%i.%i (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_DATE);
