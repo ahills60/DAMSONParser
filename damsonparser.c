@@ -15,12 +15,15 @@ sent to a log that can be reviewed.
 #include <GL/glut.h>
 #include <time.h>
 #include <pthread.h>
+// For POSIX piping
+#include <unistd.h>
 
 // Program defines
 #include "damsonparser.h"
 
 // Prototypes
-struct arg_holder;
+struct arg_holder3;
+struct arg_holder2;
 void *OpenVisualiser(void *null);
 void initialisePixelStore();
 void clearPixelStore();
@@ -37,10 +40,12 @@ int DAMSONHeaderCheck(char *line, int idx);
 int ParseLine(char *line, int lineNo, int argc, char *argv[]);
 void ProcessFile(char *filename, int argc, char *argv[]);
 void *ProcessFileThread(void *arg);
+void ProcessThread(int argc, char *argv[]);
+void *ProcessPipeThread(void *arg);
 
 // Global Variables
 char *HeaderLine1, *HeaderLine2, *HeaderLine3, *TheEndText, *LastErrorMessage = "";
-int TheEnd = 0, SceneWidth = 0, SceneHeight = 0, graphicsFlag = 0;
+int TheEnd = 0, SceneWidth = 0, SceneHeight = 0, graphicsFlag = -1;
 pthread_t procThread;
 
 unsigned int *PixelStore;
@@ -60,7 +65,14 @@ char ScreenText[256];
 pthread_t input_thread;
 
 // Structure for arguments
-struct arg_holder
+struct arg_holder3
+{
+    int argc;
+    char **argv;
+    char *filename;
+};
+
+struct arg_holder2
 {
     int argc;
     char **argv;
@@ -481,11 +493,13 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
                 memset(tempString, 0, strlen(line) - eqsign);
                 memcpy(&tempString[0], &line[eqsign + 1], strlen(line) - eqsign - 1);
                 scanout = sscanf(tempString, "%f %f %f", &RVal, &GVal, &BVal);
+                // printf("%i: \"%s\"\n", lineNo, tempString);
                 free(tempString);
                 
                 if (scanout == EOF || scanout < 3)
                 {
                     printf("Could not parse RGB values from draw command on line %i\n", lineNo);
+                    
                     return 9;
                 }
                 
@@ -561,7 +575,6 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
                 
                 printf("Scene dimensions recognised (%i x %i)\n", SceneWidth, SceneHeight);
                 initialisePixelStore();
-                initialiseGLUT(argc, argv);
                 graphicsFlag = 1;
             }
             
@@ -585,7 +598,7 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
 void ProcessFile(char *filename, int argc, char *argv[])
 {
     FILE *fp;
-    int ptr = 0, justRead = 0, lineNo = 1, dcheck = 0;
+    int ptr = 0, lineNo = 1, dcheck = 0;
     char *line = NULL;
     size_t len;
     ssize_t lsize;
@@ -632,9 +645,105 @@ void ProcessFile(char *filename, int argc, char *argv[])
 
 void *ProcessFileThread(void *arg)
 {
-    struct arg_holder arg_struct = *(struct arg_holder *) arg;
+    struct arg_holder3 arg_struct = *(struct arg_holder3 *) arg;
     
     ProcessFile(arg_struct.filename, arg_struct.argc, arg_struct.argv);
+    
+}
+
+// This function processes files.
+void ProcessPipe(int argc, char *argv[])
+{
+    int ptr = 0, lineNo = 0, dcheck = 0, c, tries = 0;
+    char line[65535], ch;
+    
+    // Initialise the line
+    memset(line, 0, 65535);
+    
+    while((c = getchar()))
+    {
+        if (c == EOF)
+        {
+            if (tries > 5)
+            {
+                break;
+            }
+            else
+                continue;
+            tries++;
+        }
+            
+        // Convert int to char
+        ch = (char) c;
+        // Add this character to the buffer
+        line[ptr++] = (char) ch;
+        
+        // Check to see if the buffer should be emptied and the command processed.
+        if (ch == '\0' || ch == '\n')
+        {
+            lineNo++;
+            if (lineNo > 0 && lineNo <= 3)
+            {
+                dcheck = DAMSONHeaderCheck(&line, lineNo - 1);
+                if (dcheck < 1)
+                {
+                    printf("Error processing header on line %i.\n\n", lineNo);
+                    graphicsFlag = -1;
+                    return;
+                }
+            }
+            else if (lineNo > 3)
+            {
+                dcheck = ParseLine(&line, lineNo, argc, argv);
+                if (dcheck < 1)
+                {
+                    printf("Error processing script on line %i.\n\n", lineNo);
+                    graphicsFlag = -1;
+                    return;
+                }
+            }
+            
+            // Reset the line buffer
+            ptr = 0;
+            memset(line, 0, 65535);
+        }
+    }
+    // Check to see if the buffer is empty
+    if (ptr > 0)
+    {
+        // Contents of buffer should be processed
+        lineNo++;
+        if (lineNo <= 3)
+        {
+            dcheck = DAMSONHeaderCheck(line, lineNo - 1);
+            if (dcheck < 1)
+            {
+                printf("Error processing header on line %i.\n\n", lineNo);
+                graphicsFlag = -1;
+                return;
+            }
+        }
+        else
+        {
+            dcheck = ParseLine(line, lineNo, argc, argv);
+            if (dcheck < 1)
+            {
+                printf("Error processing script on line %i.\n\n", lineNo);
+                graphicsFlag = -1;
+                return;
+            }
+        }
+    }
+    // Once we're done, we should free up the memory that was used by the line variable
+}
+
+void *ProcessPipeThread(void *arg)
+{
+    struct arg_holder2 arg_struct = *(struct arg_holder2 *) arg;
+    
+    ProcessPipe(arg_struct.argc, arg_struct.argv);
+    
+    printf("Pipe read complete.\n");
     
 }
 
@@ -691,28 +800,48 @@ int main(int argc, char *argv[])
     if (filename[0] == '\0')
     {
         // No. At this point, we could check for piped input.
-        printf("No input file specified\n\n");
+        if (isatty(fileno(stdin)))
+        {
+            // Connection is via a terminal session
+            printf("No input file specified\n\n");
+        }
+        else
+        {
+            // Connection is not connected to a terminal. Could be a pipe or file.
+            struct arg_holder2 *arg_struct2 = malloc(sizeof(*arg_struct2));
+            
+            arg_struct2->filename = filename;
+            arg_struct2->argc = argc;
+            arg_struct2->argv = argv;
+            
+            graphicsFlag = 0;
+            pthread_create(&procThread, NULL, ProcessPipeThread, arg_struct2);
+        }
     }
     else
     {
         // Yes. Filename specified. Let the ProcessFile function handle this request.
         printf("Input file \"%s\" specified\n\n", filename);
         
-        struct arg_holder *arg_struct = malloc(sizeof(*arg_struct));
-        arg_struct->filename = filename;
-        arg_struct->argc = argc;
-        arg_struct->argv = argv;
-        pthread_create(&procThread, NULL, ProcessFileThread, arg_struct);
+        struct arg_holder3 *arg_struct3 = malloc(sizeof(*arg_struct3));
+        arg_struct3->filename = filename;
+        arg_struct3->argc = argc;
+        arg_struct3->argv = argv;
+        // Set the graphics flag and then create a thread
+        graphicsFlag = 0;
+        pthread_create(&procThread, NULL, ProcessFileThread, arg_struct3);
     }
     while(graphicsFlag == 0)
     {
         // Do nothing
     }
     if (graphicsFlag == 1)
+    {
+        initialiseGLUT(argc, argv);
         glutMainLoop();
-    
-    printf("Finished parsing input.\n\n");
+    }
+    // printf("Finished parsing input.\n\n");
     // pthread_join(input_thread, &status);
     
-    return 0;
+    exit(0);
 }
