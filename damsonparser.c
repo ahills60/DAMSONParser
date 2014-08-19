@@ -20,6 +20,7 @@ sent to a log that can be reviewed.
 #include "damsonparser.h"
 
 // Prototypes
+struct arg_holder;
 void *OpenVisualiser(void *null);
 void initialisePixelStore();
 void clearPixelStore();
@@ -35,10 +36,12 @@ void setPixel(int x, int y, float RVal, float GVal, float BVal);
 int DAMSONHeaderCheck(char *line, int idx);
 int ParseLine(char *line, int lineNo, int argc, char *argv[]);
 void ProcessFile(char *filename, int argc, char *argv[]);
+void *ProcessFileThread(void *arg);
 
 // Global Variables
 char *HeaderLine1, *HeaderLine2, *HeaderLine3, *TheEndText, *LastErrorMessage = "";
-int TheEnd = 0, SceneWidth = 0, SceneHeight = 0;
+int TheEnd = 0, SceneWidth = 0, SceneHeight = 0, graphicsFlag = 0;
+pthread_t procThread;
 
 unsigned int *PixelStore;
 unsigned int *ActivityStore;
@@ -55,6 +58,14 @@ char ScreenText[256];
 
 // Thread for reading
 pthread_t input_thread;
+
+// Structure for arguments
+struct arg_holder
+{
+    int argc;
+    char **argv;
+    char *filename;
+};
 
 void *OpenVisualiser(void *null)
 {
@@ -551,6 +562,7 @@ int ParseLine(char *line, int lineNo, int argc, char *argv[])
                 printf("Scene dimensions recognised (%i x %i)\n", SceneWidth, SceneHeight);
                 initialisePixelStore();
                 initialiseGLUT(argc, argv);
+                graphicsFlag = 1;
             }
             
             // Assume this is debug information.
@@ -596,6 +608,7 @@ void ProcessFile(char *filename, int argc, char *argv[])
             {
                 printf("Error processing header on line %i.\n\n", lineNo);
                 fclose(fp);
+                graphicsFlag = -1;
                 return;
             }
         }
@@ -606,6 +619,7 @@ void ProcessFile(char *filename, int argc, char *argv[])
             {
                 printf("Error processing script on line %i.\n\n", lineNo);
                 fclose(fp);
+                graphicsFlag = -1;
                 return;
             }
         }
@@ -614,6 +628,14 @@ void ProcessFile(char *filename, int argc, char *argv[])
     // Once we're done, we should free up the memory that was used by the line variable
     free(line);
     fclose(fp);
+}
+
+void *ProcessFileThread(void *arg)
+{
+    struct arg_holder arg_struct = *(struct arg_holder *) arg;
+    
+    ProcessFile(arg_struct.filename, arg_struct.argc, arg_struct.argv);
+    
 }
 
 int main(int argc, char *argv[])
@@ -676,11 +698,21 @@ int main(int argc, char *argv[])
         // Yes. Filename specified. Let the ProcessFile function handle this request.
         printf("Input file \"%s\" specified\n\n", filename);
         
-        ProcessFile(filename, argc, argv);
+        struct arg_holder *arg_struct = malloc(sizeof(*arg_struct));
+        arg_struct->filename = filename;
+        arg_struct->argc = argc;
+        arg_struct->argv = argv;
+        pthread_create(&procThread, NULL, ProcessFileThread, arg_struct);
     }
+    while(graphicsFlag == 0)
+    {
+        // Do nothing
+    }
+    if (graphicsFlag == 1)
+        glutMainLoop();
     
     printf("Finished parsing input.\n\n");
     // pthread_join(input_thread, &status);
-    glutMainLoop();
+    
     return 0;
 }
