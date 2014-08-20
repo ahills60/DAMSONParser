@@ -29,6 +29,7 @@ sent to a log that can be reviewed.
 
 
 // Prototypes
+void Error(const char* format, ...);
 void *OpenVisualiser(void *null);
 void initialisePixelStore();
 void clearPixelStore();
@@ -67,8 +68,34 @@ int PrintLoc;
 // Text buffer:
 char ScreenText[256];
 
+// Last read instruction:
+char LastReadInstruction[256];
+char LastReadErrorLine1[256];
+char LastReadErrorLine2[256];
+char LastReadErrorRot = 0;
+
 // Thread for reading
 pthread_t input_thread;
+
+// Function for printing errors
+void Error(const char* format, ...)
+{
+    va_list argpointer;
+    va_start(argpointer, format);
+    vsnprintf(ScreenText, 255, format, argpointer);
+    printf("%s", ScreenText);
+    if (LastReadErrorRot == 0)
+    {
+        LastReadErrorLine1 = ScreenText;
+        LastReadErrorRot = 1;
+    }
+    else
+    {
+        LastReadErrorLine2 = ScreenText;
+        LastReadErrorRot = 0;
+    }
+    va_end(argpointer);
+}
 
 void *OpenVisualiser(void *null)
 {
