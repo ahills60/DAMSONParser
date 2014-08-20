@@ -86,12 +86,15 @@ void Error(const char* format, ...)
     printf("%s", ScreenText);
     if (LastReadErrorRot == 0)
     {
-        LastReadErrorLine1 = ScreenText;
+        
+        memset(LastReadErrorLine1, 0, sizeof(char) * 256);
+        memcpy(&LastReadErrorLine1[0], &ScreenText[0], 255);
         LastReadErrorRot = 1;
     }
     else
     {
-        LastReadErrorLine2 = ScreenText;
+        memset(LastReadErrorLine2, 0, sizeof(char) * 256);
+        memcpy(&LastReadErrorLine2[0], &ScreenText[0], 255);
         LastReadErrorRot = 0;
     }
     va_end(argpointer);
