@@ -117,7 +117,7 @@ void fadeActivity(void)
         a--;
         // Ensure that a is within the bounds
         a = (a < 0) ? 0 : a;
-        ActivityStore[i] = 0 | 255 < 8 | 0 << 16 | a << 24;
+        ActivityStore[i] = 0 | (255 << 8) | (0 << 16) | (a << 24);
     }
 }
 
@@ -296,7 +296,7 @@ void displayFunc(void)
 void initialiseGLUT(int argc, char *argv[])
 {
     DisplayInfo = 0;
-    DisplayActivity = 1;
+    DisplayActivity = 0;
     glutInitWindowSize(SceneWidth, SceneHeight);
     
     // Set up the window position:
@@ -330,8 +330,8 @@ void setPixel(int x, int y, float RVal, float GVal, float BVal)
     
     // printf("At <%i, %i>, RGB %f, %f, %f is %i, %i, %i\n", x, y, RVal, GVal, BVal, iR, iG, iB);
     
-    PixelStore[idx] = iR | iG << 8 | iB << 16;
-    ActivityStore[idx] = 0 | (255 < 8) | (0 << 16) | (255 << 24);
+    PixelStore[idx] = iR | (iG << 8) | (iB << 16);
+    ActivityStore[idx] = 0 | (255 << 8) | (0 << 16) | (255 << 24);
 }
 
 // This version checks the header of the DAMSON compiler output
