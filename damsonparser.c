@@ -310,7 +310,7 @@ void displayFunc(void)
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glColor4f(0.0, 0.0, 0.0, 0.7);
-        glRecti(5, PrintLoc, 340, SceneHeight - 5);
+        glRecti(5, PrintLoc, 480, SceneHeight - 5);
         glColor3f(1.0, 1.0, 1.0);
         PrintLoc = SceneHeight - 30;
         
@@ -493,10 +493,6 @@ int ParseLine(char *line, int lineNo)
     {
         if (!TheEnd)
         {
-            // Store the read line for printing in the visualiser
-            memset(LastReadInstruction, 0, 256);
-            memcpy(&LastReadInstruction[0], &line[0], (strlen(line) > 255) ? 255 : strlen(line));
-            
             // Check for no file errors
             if (!strcmp(line, "No file?"))
             {
@@ -504,6 +500,18 @@ int ParseLine(char *line, int lineNo)
                 Error("Error: No file was passed to the DAMSON compiler.\n");
                 return 0;
             }
+            tempString = malloc(sizeof(char) * 8);
+            memset(tempString, 0, 8);
+            memcpy(&tempString[0], &line[0], 7);
+            
+            // Lookout for the timeout command.
+            if (!strcmp(tempString, "Timeout"))
+            {
+                // Free memory and ignore.
+                free(tempString);
+                return 3;
+            }
+            free(tempString);
             // Are we at the end?
             if (strlen(line) > 10)
             {
@@ -527,6 +535,11 @@ int ParseLine(char *line, int lineNo)
                 // Line is too short to be anything useful
                 return 3;
             }
+            
+            // Store the read line for printing in the visualiser
+            memset(LastReadInstruction, 0, 256);
+            memcpy(&LastReadInstruction[0], &line[0], (strlen(line) > 255) ? 255 : strlen(line));
+            
             // If here, we're not at the end. Look for recognisable input
             for (n = 0; n < (strlen(line) - 4); n++)
             {
