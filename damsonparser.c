@@ -74,6 +74,13 @@ char LastReadErrorLine1[256];
 char LastReadErrorLine2[256];
 char LastReadErrorRot = 0;
 
+// The end information:
+char WorkspaceMessage[256];
+char ExecutionMessage[256];
+char ComputingMessage[256];
+char StandbyTkMessage[256];
+char AvgSearchMessage[256];
+
 // Thread for reading
 pthread_t input_thread;
 
@@ -322,6 +329,22 @@ void displayFunc(void)
             printToScreen(10, "Last error or warning:");
             printToScreen(10, "     %s", LastReadErrorLine1);
             printToScreen(10, "     %s", LastReadErrorLine2);
+            printToScreen(10, " ");
+        }
+        if (TheEnd)
+        {
+            printToScreen(10, "Runtime Summary: ");
+            if (WorkspaceMessage[0] > 0)
+                printToScreen(10, "     %s", WorkspaceMessage);
+            if (ExecutionMessage[0] > 0)
+                printToScreen(10, "     %s", ExecutionMessage);
+            if (ComputingMessage[0] > 0)
+                printToScreen(10, "     %s", ComputingMessage);
+            if (StandbyTkMessage[0] > 0)
+                printToScreen(10, "     %s", StandbyTkMessage);
+            if (AvgSearchMessage[0] > 0)
+                printToScreen(10, "     %s", AvgSearchMessage);
+            printToScreen(10, " ");
         }
         glDisable(GL_BLEND);
         glPopMatrix();
@@ -468,11 +491,12 @@ int ParseLine(char *line, int lineNo)
     // Now determine if there's something to look at:
     if (strcmp(line, ""))
     {
-        // Store the read line for printing in the visualiser
-        memset(LastReadInstruction, 0, 256);
-        memcpy(&LastReadInstruction[0], &line[0], (strlen(line) > 255) ? 255 : strlen(line));
         if (!TheEnd)
         {
+            // Store the read line for printing in the visualiser
+            memset(LastReadInstruction, 0, 256);
+            memcpy(&LastReadInstruction[0], &line[0], (strlen(line) > 255) ? 255 : strlen(line));
+            
             // Check for no file errors
             if (!strcmp(line, "No file?"))
             {
@@ -492,7 +516,9 @@ int ParseLine(char *line, int lineNo)
                     // Raise the end flag.
                     TheEnd = 1;
                     free(tempString);
-                    // ANd return to the calling function
+                    // Copy line to workspace variable
+                    memcpy(&WorkspaceMessage[0], &line[0], strlen(line));
+                    // And return to the calling function
                     return 2;
                 }
                 free(tempString);
@@ -701,6 +727,28 @@ int ParseLine(char *line, int lineNo)
         else
         {
             // This is the end...
+            // There are only so many possibilities that can be displayed in "the end":
+            switch (line[0])
+            {
+                case 'E':
+                    // Execution time
+                    memcpy(&ExecutionMessage[0], &line[0], strlen(line));
+                    break;
+                case 'C':
+                    // Computing time
+                    memcpy(&ComputingMessage[0], &line[0], strlen(line));
+                    break;
+                case 'S':
+                    // Standby ticks
+                    memcpy(&StandbyTkMessage[0], &line[0], strlen(line));
+                    break;
+                case 'A':
+                    // Average Search Length
+                    memcpy(&AvgSearchMessage[0], &line[0], strlen(line));
+                    break;
+                default:
+                    Warning("Warning: Unrecognised line in DAMSON end summary.\n");
+            }
             return 2;
         }
     }
@@ -870,6 +918,11 @@ int main(int argc, char *argv[])
     memset(LastReadInstruction, 0, 256);
     memset(LastReadErrorLine1, 0, 256);
     memset(LastReadErrorLine2, 0, 256);
+    memset(WorkspaceMessage, 0, 256);
+    memset(ExecutionMessage, 0, 256);
+    memset(ComputingMessage, 0, 256);
+    memset(StandbyTkMessage, 0, 256);
+    memset(AvgSearchMessage, 0, 256);
     
     // Go through arguments (if any)
     for (i = 0; i < argc; i++)
