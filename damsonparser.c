@@ -309,6 +309,20 @@ void displayFunc(void)
         
         printToScreen(10, "DAMSON parser version %i.%i.%i (%s)", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_DATE);
         printToScreen(10, " ");
+        printToScreen(10, "DAMSON information:");
+        printToScreen(10, "     %s", HeaderLine1);
+        printToScreen(10, "     %s", HeaderLine2);
+        printToScreen(10, "     %s", HeaderLine3);
+        printToScreen(10, " ");
+        printToScreen(10, "Last instruction:");
+        printToScreen(10, "     %s", LastReadInstruction);
+        printToScreen(10, " ");
+        if (LastReadErrorLine1[0] > 0)
+        {
+            printToScreen(10, "Last error or warning:");
+            printToScreen(10, "     %s", LastReadErrorLine1);
+            printToScreen(10, "     %s", LastReadErrorLine2);
+        }
         glDisable(GL_BLEND);
         glPopMatrix();
     }
@@ -454,6 +468,9 @@ int ParseLine(char *line, int lineNo)
     // Now determine if there's something to look at:
     if (strcmp(line, ""))
     {
+        // Store the read line for printing in the visualiser
+        memset(LastReadInstruction, 0, 256);
+        memcpy(&LastReadInstruction[0], &line[0], (strlen(line) > 255) ? 255 : strlen(line));
         if (!TheEnd)
         {
             // Check for no file errors
@@ -842,15 +859,17 @@ void *ProcessPipeThread(void)
 
 int main(int argc, char *argv[])
 {
-    char *currObj, *parVal, *filename = "\0";
+    char *currObj, *parVal = "", *filename = "\0";
     int i, n, a, isParam;
     
     printf("\nDAMSON Parser ");
     printf("Version: %i.%i.%i (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD, VERSION_DATE);
     printf("Author: Andrew Hills (a.hills@sheffield.ac.uk)\n\n");
     
-    
-    parVal = "";
+    // Initialise variables
+    memset(LastReadInstruction, 0, 256);
+    memset(LastReadErrorLine1, 0, 256);
+    memset(LastReadErrorLine2, 0, 256);
     
     // Go through arguments (if any)
     for (i = 0; i < argc; i++)
