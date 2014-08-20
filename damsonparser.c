@@ -26,11 +26,11 @@ sent to a log that can be reviewed.
 
 // Defines:
 #define MAX_CHARS       65536
-
+// Use the Error function for warnings
+#define Warning         Error
 
 // Prototypes
 void Error(const char* format, ...);
-void *OpenVisualiser(void *null);
 void initialisePixelStore();
 void clearPixelStore();
 void reshapeFunc(int newWidth, int newHeight);
@@ -97,12 +97,6 @@ void Error(const char* format, ...)
     va_end(argpointer);
 }
 
-void *OpenVisualiser(void *null)
-{
-    printf("Starting GLUT main loop...\n");
-    glutMainLoop();
-}
-
 void initialisePixelStore()
 {
     // Ensure we have enough memory to store pixel information
@@ -161,28 +155,28 @@ void writePNGFile(char *filename)
     fp = fopen(filename, "wb");
     if (!fp)
     {
-        printf("Error opening file for PNG creation.\n\n");
+        Error("Error opening file for PNG creation.\n\n");
         return;
     }
     
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (png_ptr == NULL)
     {
-        printf("Error writing PNG structure\n\n");
+        Error("Error writing PNG structure\n\n");
         goto png_create_write_struct_fail;
     }
     
     info_ptr = png_create_info_struct(png_ptr);
     if (info_ptr == NULL)
     {
-        printf("Error creating PNG information structure.\n\n");
+        Error("Error creating PNG information structure.\n\n");
         goto png_create_info_struct_fail;
     }
     
     // Set up error handling
     if (setjmp(png_jmpbuf(png_ptr)))
     {
-        printf("Error encountered when writing PNG file.\n\n");
+        Error("Error encountered when writing PNG file.\n\n");
         goto png_fail;
     }
     
@@ -463,7 +457,7 @@ int ParseLine(char *line, int lineNo)
             if (!strcmp(line, "No file?"))
             {
                 // No file provided. Bad.
-                printf("Error: No file was passed to the DAMSON compiler.\n");
+                Error("Error: No file was passed to the DAMSON compiler.\n");
                 return 0;
             }
             // Are we at the end?
@@ -516,14 +510,14 @@ int ParseLine(char *line, int lineNo)
                             else
                             {
                                 // Too many brackets
-                                printf("Warning: Disfigured draw call on line %i. Too many parentheses.\n", lineNo);
+                                Warning("Warning: Disfigured draw call on line %i. Too many parentheses.\n", lineNo);
                                 return 4;
                             }
                             break;
                         case ')':
                             if (lBrack < 0)
                             {
-                                printf("Warning: Parentheses could be out of order on line %i\n", lineNo);
+                                Warning("Warning: Parentheses could be out of order on line %i\n", lineNo);
                                 return 5;
                             }
                             if (rBrack < 0)
@@ -531,28 +525,28 @@ int ParseLine(char *line, int lineNo)
                             else
                             {
                                 // Too many brackets
-                                printf("Warning: Disfigured draw call on line %i. Too many parentheses.\n", lineNo);
+                                Warning("Warning: Disfigured draw call on line %i. Too many parentheses.\n", lineNo);
                                 return 5;
                             }
                             break;
                         case '=':
                             if (rBrack < 0)
                             {
-                                printf("Warning: Equals encountered before closing parentheses on line %i.\n", lineNo);
+                                Warning("Warning: Equals encountered before closing parentheses on line %i.\n", lineNo);
                             }
                             if (eqsign < 0)
                                 eqsign = n;
                             else
                             {
                                 // Too many brackets
-                                printf("Warning: Disfigured draw call on line %i. Too many equals.\n", lineNo);
+                                Warning("Warning: Disfigured draw call on line %i. Too many equals.\n", lineNo);
                                 return 6;
                             }
                             break;
                         case ',':
                             if (comsign >= 0)
                             {
-                                printf("Warning: Multiple commas encountered on line %i.\n", lineNo);
+                                Warning("Warning: Multiple commas encountered on line %i.\n", lineNo);
                                 return 7;
                             }
                             if (lBrack >= 0 && rBrack < 0)
@@ -574,7 +568,7 @@ int ParseLine(char *line, int lineNo)
                 // Check scene dimensions
                 if (SceneHeight == 0 || SceneWidth == 0)
                 {
-                    printf("Error: Found draw command before scene dimensions defined on line %i.\n", lineNo);
+                    Error("Error: Found draw command before scene dimensions defined on line %i.\n", lineNo);
                     return 0;
                 }
                 
@@ -588,7 +582,7 @@ int ParseLine(char *line, int lineNo)
                 
                 if (scanout == EOF || scanout < 2)
                 {
-                    printf("Could not parse coordinates from draw command on line %i\n", lineNo);
+                    Error("Could not parse coordinates from draw command on line %i\n", lineNo);
                     return 9;
                 }
                 
@@ -601,7 +595,7 @@ int ParseLine(char *line, int lineNo)
                 
                 if (scanout == EOF || scanout < 3)
                 {
-                    printf("Could not parse RGB values from draw command on line %i\n", lineNo);
+                    Error("Could not parse RGB values from draw command on line %i\n", lineNo);
                     
                     return 9;
                 }
@@ -661,7 +655,7 @@ int ParseLine(char *line, int lineNo)
                         break;
                 if (n == 0)
                 {
-                    printf("Warning: Could not recognise scene description on line %i.\n", lineNo);
+                    Error("Warning: Could not recognise scene description on line %i.\n", lineNo);
                     return 3;
                 }
                 tempString = malloc(sizeof(char) * (strlen(line) - n + 2));
@@ -672,7 +666,7 @@ int ParseLine(char *line, int lineNo)
                 free(tempString);
                 if (scanout == EOF || scanout < 2)
                 {
-                    printf("Warning: Unable to understand scene description on line %i.\n", lineNo);
+                    Error("Warning: Unable to understand scene description on line %i.\n", lineNo);
                     return 3;
                 }
                 
@@ -711,7 +705,7 @@ void ProcessFile(char *filename)
     // Ensure file exists and can be read:
     if (fp == NULL)
     {
-        printf("\nError opening file. Ensure filename and path is valid.\n");
+        Error("\nError opening file. Ensure filename and path is valid.\n");
         return;
     }
     
@@ -722,7 +716,7 @@ void ProcessFile(char *filename)
             dcheck = DAMSONHeaderCheck(line, lineNo - 1);
             if (dcheck < 1)
             {
-                printf("Error processing header on line %i.\n\n", lineNo);
+                Error("Error processing header on line %i.\n\n", lineNo);
                 fclose(fp);
                 graphicsFlag = -1;
                 return;
@@ -733,7 +727,7 @@ void ProcessFile(char *filename)
             dcheck = ParseLine(line, lineNo);
             if (dcheck < 1)
             {
-                printf("Error processing script on line %i.\n\n", lineNo);
+                Error("Error processing script on line %i.\n\n", lineNo);
                 fclose(fp);
                 graphicsFlag = -1;
                 return;
@@ -786,7 +780,7 @@ void ProcessPipe()
                 dcheck = DAMSONHeaderCheck(&line, lineNo - 1);
                 if (dcheck < 1)
                 {
-                    printf("Error processing header on line %i.\n\n", lineNo);
+                    Error("Error processing header on line %i.\n\n", lineNo);
                     graphicsFlag = -1;
                     return;
                 }
@@ -796,7 +790,7 @@ void ProcessPipe()
                 dcheck = ParseLine(&line, lineNo);
                 if (dcheck < 1)
                 {
-                    printf("Error processing script on line %i.\n\n", lineNo);
+                    Error("Error processing script on line %i.\n\n", lineNo);
                     graphicsFlag = -1;
                     return;
                 }
@@ -817,7 +811,7 @@ void ProcessPipe()
             dcheck = DAMSONHeaderCheck(line, lineNo - 1);
             if (dcheck < 1)
             {
-                printf("Error processing header on line %i.\n\n", lineNo);
+                Error("Error processing header on line %i.\n\n", lineNo);
                 graphicsFlag = -1;
                 return;
             }
@@ -827,7 +821,7 @@ void ProcessPipe()
             dcheck = ParseLine(line, lineNo);
             if (dcheck < 1)
             {
-                printf("Error processing script on line %i.\n\n", lineNo);
+                Error("Error processing script on line %i.\n\n", lineNo);
                 graphicsFlag = -1;
                 return;
             }
@@ -884,7 +878,7 @@ int main(int argc, char *argv[])
                 if (!strcmp(parVal, "filename"))
                     filename = currObj;
                 else
-                    printf("Unrecognised input \"%s\"\n", parVal);
+                    Error("Unrecognised input \"%s\"\n", parVal);
             }
             else // No parameter was defined. Skip to the next argument.
                 continue;
@@ -898,7 +892,7 @@ int main(int argc, char *argv[])
         if (isatty(fileno(stdin)))
         {
             // Connection is via a terminal session
-            printf("No input file specified\n\n");
+            Error("No input file specified\n\n");
         }
         else
         {
