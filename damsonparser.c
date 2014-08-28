@@ -52,7 +52,7 @@ void *ProcessPipeThread(void);
 
 // Global Variables
 char *HeaderLine1, *HeaderLine2, *HeaderLine3, *TheEndText, *LastErrorMessage = "";
-int TheEnd = 0, SceneWidth = 0, SceneHeight = 0, graphicsFlag = -1;
+int TheEnd = 0, SceneWidth = 0, SceneHeight = 0, graphicsFlag = -1, NoHeader = 0;
 pthread_t procThread;
 
 unsigned int *PixelStore;
@@ -817,7 +817,7 @@ void ProcessFile(char *filename)
     
     while((lsize = getline(&line, &len, fp)) != -1)
     {
-        if (lineNo <= 3)
+        if (lineNo <= 3 && !NoHeader)
         {
             dcheck = DAMSONHeaderCheck(line, lineNo - 1);
             if (dcheck < 1)
@@ -881,7 +881,7 @@ void ProcessPipe()
         if (ch == '\0' || ch == '\n')
         {
             lineNo++;
-            if (lineNo > 0 && lineNo <= 3)
+            if (lineNo > 0 && lineNo <= 3 && !NoHeader)
             {
                 dcheck = DAMSONHeaderCheck(&line, lineNo - 1);
                 if (dcheck < 1)
@@ -891,7 +891,7 @@ void ProcessPipe()
                     return;
                 }
             }
-            else if (lineNo > 3)
+            else if (lineNo > 3 || NoHeader)
             {
                 dcheck = ParseLine(&line, lineNo);
                 if (dcheck < 1)
@@ -912,7 +912,7 @@ void ProcessPipe()
     {
         // Contents of buffer should be processed
         lineNo++;
-        if (lineNo <= 3)
+        if (lineNo <= 3 && !NoHeader)
         {
             dcheck = DAMSONHeaderCheck(line, lineNo - 1);
             if (dcheck < 1)
@@ -981,6 +981,8 @@ int main(int argc, char *argv[])
             memmove(&currObj[0], &currObj[n], strlen(currObj) - n + 1);
             
             parVal = currObj;
+            if (!strcmp(parVal, "noheader"))
+                NoHeader = 1;
         }
         else
         {
