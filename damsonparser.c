@@ -47,7 +47,6 @@ int DAMSONHeaderCheck(char *line, int idx);
 int ParseLine(char *line, int lineNo);
 void ProcessFile(char *filename);
 void *ProcessFileThread(void *arg);
-void ProcessThread();
 void *ProcessPipeThread(void);
 
 // Global Variables
@@ -664,6 +663,32 @@ int ParseLine(char *line, int lineNo)
                 setPixel(x, y, RVal, GVal, BVal);
                 return 100;
             }
+            // Let's check for the keyword "error".
+            if (strlen(line) > 5)
+            {
+                tempString = malloc(sizeof(char) * 6);
+                for (n = 0; n < strlen(line) - 6; n++)
+                {
+                    // Copy the contents of the string to memory
+                    memset(tempString, 0, sizeof(char) * 6);
+                    memcpy(&tempString[0], &line[n], sizeof(char) * 5);
+                    if (!strcasecmp(tempString, "error"))
+                    {
+                        // Yes, it's an error message. Best way to handle this is to print this error
+                        // and recommend further debugging outside the DAMSON parser. Finally, safely
+                        // free any memory and return with an error condition.
+                        Error("An error was encountered in DAMSON:\n");
+                        Error("     %s", line);
+                        Error("Please debug outside the DAMSON parser environment.\n");
+                        free(tempString);
+                        return -1;
+                    }
+                    
+                }
+                // Not an error. Free up memory.
+                free(tempString);
+            }
+            
             // No draw keyword was found. This could be a scene definition
             if (strlen(line) > 17)
             {
@@ -734,31 +759,6 @@ int ParseLine(char *line, int lineNo)
                 graphicsFlag = 1;
             }
             
-            // Finally, let's check for the keyword "error".
-            if (strlen(line) > 5)
-            {
-                tempString = malloc(sizeof(char) * 6);
-                for (n = 0; n < strlen(line) - 6; n++)
-                {
-                    // Copy the contents of the string to memory
-                    memset(tempString, 0, sizeof(char) * 6);
-                    memcpy(&tempString[0], &line[n], sizeof(char) * 5);
-                    if (!strcasecmp(tempString, "error"))
-                    {
-                        // Yes, it's an error message. Best way to handle this is to print this error
-                        // and recommend further debugging outside the DAMSON parser. Finally, safely
-                        // free any memory and return with an error condition.
-                        Error("An error was encountered in DAMSON:\n");
-                        Error("     %s", line);
-                        Error("Please debug outside the DAMSON parser environment.\n");
-                        free(tempString);
-                        return -1;
-                    }
-                    
-                }
-                // Not an error. Free up memory.
-                free(tempString);
-            }
             // Assume this is debug information.
             return 3;
         }
