@@ -678,7 +678,7 @@ int ParseLine(char *line, int lineNo)
                         // and recommend further debugging outside the DAMSON parser. Finally, safely
                         // free any memory and return with an error condition.
                         Error("An error was encountered in DAMSON:\n");
-                        Error("     %s", line);
+                        Error("     %s\n", line);
                         Error("Please debug outside the DAMSON parser environment.\n");
                         free(tempString);
                         return -1;
