@@ -660,6 +660,21 @@ int ParseLine(char *line, int lineNo)
                 
                 // If here, we've successfully extracted RGB values and coordinate information.
                 // printf("X: %i Y: %i --> R: %f G: %f B: %f\n", x, y, RVal, GVal, BVal);
+                
+                // Just check that the pixel values do not exceed the scene dimensions
+                if (x > SceneWidth || x < 0)
+                {
+                    Error("Pixel draw x coordinate is outside scenery dimensions on line %i\n", lineNo);
+                    
+                    return 10;
+                }
+                if (y > SceneHeight || y < 0)
+                {
+                    Error("Pixel draw y coordinate is outside scenery dimensions on line %i\n", lineNo);
+                    
+                    return 10;
+                }
+                
                 setPixel(x, y, RVal, GVal, BVal);
                 return 100;
             }
